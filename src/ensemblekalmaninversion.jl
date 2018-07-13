@@ -67,8 +67,7 @@ function eki(y::Array{R,1},
             println("Iteration # $i. Discrepancy Check; Weighted Norm: $convg, Noise level: $(ζ*η)")
         end
         if convg <= ζ*η
-            ub = mean(uj)
-            return ub
+            return mean(uj)
         end
         convg = sqrt((y-wb)'*(Γ\(y-wb)))
         #Analysis
