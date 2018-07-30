@@ -12,6 +12,7 @@ function setγ(γ::R, ρ::R, y::Array{R,1}, wb::Array{R,1}, cww::Array{R,2}, Γ:
     γ
 end
 
+
 function eki(y::Array{R,1}, 
              σ::R, 
              η::R,
@@ -23,24 +24,29 @@ function eki(y::Array{R,1},
              ζ::R = convert(R,0.5), 
              γ0::R = convert(R,0.5), 
              parallel::Bool = false, 
-             verbosity=0) where R<:Real
-    ydim = length(y)
-    Γ = σ^2.*eye(R,ydim)
-    eki(y, Γ, η, J, N, prior, gmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity)
+             verbosity=0, 
+             lowmem=false) where R<:Real
+    if lowmem
+        eki_lowmem(y, σ, η, J, N, prior, gmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity)
+    else
+        ydim = length(y)
+        Γ = σ^2.*eye(R,ydim)
+        eki(y, Γ, η, J, N, prior, gmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity)
+    end
 end
 
 function eki(y::Array{R,1}, 
-                Γ::Array{R,2}, 
-                η::R,
-                J::Integer, 
-                N::Integer, 
-                prior::Function, 
-                gmap::Function; 
-                ρ::R = convert(R,0.5), 
-                ζ::R = convert(R,0.5), 
-                γ0::R = convert(R,1.0), 
-                parallel::Bool = false,
-                verbosity=0) where {R<:Real}
+             Γ::Array{R,2}, 
+             η::R,
+             J::Integer, 
+             N::Integer, 
+             prior::Function, 
+             gmap::Function; 
+             ρ::R = convert(R,0.5), 
+             ζ::R = convert(R,0.5), 
+             γ0::R = convert(R,1.0), 
+             parallel::Bool = false,
+             verbosity=0) where {R<:Real}
     #Initialization
     H = MvNormal(Γ)
     udim = length(prior())

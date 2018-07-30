@@ -1,14 +1,16 @@
 module EKI
 
 using Distributions: MvNormal
-using LowRankApprox
-import Base.convert, Base.size
+using LowRankApprox: AbstractLinearOperator, LinearOperator, pheigfact
+import Base: convert, size, transpose, ishermitian, issymmetric
+import Compat: adjoint
 
-export eki, eki_lowmem
+export eki
 export heki
 
-include("ensemblekalmaninversion.jl")
+include("covarianceoperator.jl")
 include("eki_lowmem.jl")
+include("ensemblekalmaninversion.jl")
 include("hierarchicaleki.jl")
 
 
