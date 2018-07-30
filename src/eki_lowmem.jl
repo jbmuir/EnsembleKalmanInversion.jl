@@ -1,6 +1,37 @@
 #TODO: can we improve this further using low-rank approximations of cww?
 #      rank of cww is at most J?
 
+#Notes: 
+#CovarianceOperator is a custom hermitian operator that explicitly defines the multiplication operation
+#so that you never need the whole covariance matrix in memory
+#Why is there a tmp here? 
+function covmul!(y, Xc, n, x)
+    y = Xc'*(Xc*x)./(n-1)
+end
+
+mutable struct CovarianceOperator{T<:Real} <: AbstractLinearOperator{T}
+    p::Int
+    mul!::Function
+    _tmp::Nullable{Array{T}}
+end
+
+function CovarianceOperator(X)
+    T = eltype(X)
+    n, p = size(X)
+    Xm = mean(X,1)
+    ml! = (y, _, x) -> covmul!(y, X.-Xm, n, x)
+    CovarianceOperator{T}(p, ml!, nothing)
+end
+
+convert(::Type{LinearOperator}, A::CovarianceOperator) = convert(LinearOperator{eltype(A)}, A)
+convert(::Type{LinearOperator{T}}, A::CovarianceOperator{T}) where T = LinearOperator{T}(A.p, A.p, A.mul!, A.mul!, A._tmp)
+adjoint(A::CovarianceOperator) = A
+ishermitian(::CovarianceOperator) = true
+issymmetric(A::CovarianceOperator) = isreal(A)
+size(A::CovarianceOperator) = (A.p, A.p)
+size(A::CovarianceOperator, dim::Integer) = (dim == 1 || dim == 2) ? A.p : 1
+
+
 function eki_lowmem(y::Array{R,1}, 
                     σ::R, 
                     η::R,
