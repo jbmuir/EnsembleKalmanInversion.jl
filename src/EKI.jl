@@ -2,6 +2,7 @@ module EKI
 
 using Distributions: MvNormal
 using LowRankApprox: AbstractLinearOperator, LinearOperator, pheigfact
+using WoodburyMatrices
 import Base: convert, size, transpose, ishermitian, issymmetric
 import Compat: adjoint
 
