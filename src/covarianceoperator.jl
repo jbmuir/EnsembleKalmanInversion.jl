@@ -22,7 +22,8 @@ end
 
 Base.convert(::Type{LinearOperator}, A::CovarianceOperator) = convert(LinearOperator{eltype(A)}, A)
 Base.convert(::Type{LinearOperator{T}}, A::CovarianceOperator{T}) where T = LinearOperator{T}(A.p, A.p, A.mul!, A.mul!, A._tmp)
-Compat.adjoint(A::CovarianceOperator) = A
+@compat adjoint(A::CovarianceOperator) = A
+Base.transpose(A::CovarianceOperator) = A
 Base.ishermitian(A::CovarianceOperator) = true
 Base.issymmetric(A::CovarianceOperator) = isreal(A)
 Base.size(A::CovarianceOperator) = (A.p, A.p)
@@ -34,22 +35,37 @@ end
 
 mutable struct CrossCovarianceOperator{T<:Real} <: AbstractLinearOperator{T}
     p::Int
+    q::Int
     mul!::Function
+    mulc!::Function
     _tmp::Nullable{Array{T}}
 end
 
-function CrossCovarianceOperator(X)
-    T = eltype(X)
-    n, p = size(X)
+function CrossCovarianceOperator(X, Y)
+    if (size(X) == size(Y)) && isapprox(X, Y)
+        return CovarianceOperator(X)
+    end
+    Tx = eltype(X)
+    Ty = eltype(Y)
+    @assert Tx == Ty
+    nx, p = size(X)
+    ny, q = size(Y)
+    @assert nx == ny
     Xm = mean(X,1)
-    ml! = (y, _, x) -> covmul!(y, X.-Xm, n, x)
-    CrossCovarianceOperator{T}(p, ml!, nothing)
+    Ym = mean(Y,1)
+    ml! = (y, _, x) -> crosscovmul!(y, X.-Xm, Y.-Ym, nx, x)
+    mulc! = (y, _, x) -> crosscovmul!(y, Y.-Ym, X.-Xm, nx, x)
+    CrossCovarianceOperator{Tx}(p, q, ml!, mulc!, nothing)
 end
 
-Base.convert(::Type{LinearOperator}, A::CovarianceOperator) = convert(LinearOperator{eltype(A)}, A)
-Base.convert(::Type{LinearOperator{T}}, A::CovarianceOperator{T}) where T = LinearOperator{T}(A.p, A.p, A.mul!, A.mul!, A._tmp)
-Compat.adjoint(A::CovarianceOperator) = A
-Base.ishermitian(A::CovarianceOperator) = true
-Base.issymmetric(A::CovarianceOperator) = isreal(A)
-Base.size(A::CovarianceOperator) = (A.p, A.p)
-Base.size(A::CovarianceOperator, dim::Integer) = (dim == 1 || dim == 2) ? A.p : 1
+Base.convert(::Type{LinearOperator}, A::CrossCovarianceOperator) = convert(LinearOperator{eltype(A)}, A)
+Base.convert(::Type{LinearOperator{T}}, A::CrossCovarianceOperator{T}) where T = LinearOperator{T}(A.p, A.q, A.mul!, A.mulc!, A._tmp)
+@compat adjoint(A::CrossCovarianceOperator{T}) where {T} = CrossCovarianceOperator{T}(A.q, A.p, A.mulc!, A.mul!, nothing)
+Base.transpose(A::CrossCovarianceOperator{T}) where {T} = CrossCovarianceOperator{T}(A.q, A.p, A.mulc!, A.mul!, nothing)
+Base.ishermitian(A::CrossCovarianceOperator) = false
+Base.issymmetric(A::CrossCovarianceOperator) = false
+Base.size(A::CrossCovarianceOperator) = (A.p, A.q)
+
+
+#this is a ``read only'' shortcircuiting way to match the dim - see julia shortcircuiting rules to understand
+Base.size(A::CrossCovarianceOperator, dim::Integer) = (dim == 1 && return A.p) || (dim == 2) ? A.q : 1

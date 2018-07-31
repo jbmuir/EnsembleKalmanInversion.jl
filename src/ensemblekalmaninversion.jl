@@ -60,6 +60,9 @@ function eki(y::Array{R,1},
         println("Starting up to $N iterations with $J ensemble members")
     end
     for i = 1:N
+        if verbosity > 0
+            println("Iteration # $i. Starting Forward Map")
+        end
         #Prediction
         if parallel
             wj = pmap(gmap, uj)

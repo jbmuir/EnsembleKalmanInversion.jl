@@ -1,10 +1,10 @@
 module EKI
 
 using Distributions: MvNormal
-using LowRankApprox: AbstractLinearOperator, LinearOperator, pheigfact
+using LowRankApprox: AbstractLinearOperator, LinearOperator, pheigfact, PartialHermitianEigen
 using WoodburyMatrices
 import Base: convert, size, transpose, ishermitian, issymmetric
-import Compat: adjoint
+using Compat
 
 export eki
 export heki

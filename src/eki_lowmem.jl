@@ -1,33 +1,33 @@
 #TODO: can we improve this further using low-rank approximations of cww?
 #      rank of cww is at most J?
 
-function wbinv(Ai::UniformScaling{R}) where {R<:Real}
+function wbinv(Ai::UniformScaling{R}, B, Ci, x) where {R<:Real}
     #woodbury inverse for A given by uniformscaling Ai = A inverse
+    # Ci = C inverse
+    # B = U, V (in our case UCV = B'CB is symmetric)
+    Ai*x - Ai*B*(Ci+B'*Ai*B)*B'*Ai*x
 end
 
 
-function setγ_lowmem!(γ::R, 
-                      T::UniformScaling{R}, 
-                      Cwwf::LowRankApprox.PartialHermitianEigen{R,R}, 
-                      y::Array{R,1}, 
-                      wb::Array{R,1}) where {R<:Real}
+function setγ_lowmem(γ::R, 
+                     ρ::R,
+                     T::UniformScaling{R}, 
+                     Cwwf::PartialHermitianEigen{R,R}, 
+                     y::Array{R,1}, 
+                     wb::Array{R,1}) where {R<:Real}
     while true
-        rhs = ρ*sqrt((y-wb)'*(y-wb)/Γ)
-        for j = 1:ydim
-            cww[j,j] += (γ-γc)*σ2
-        end
-        tmp = cww\(y-wb)
-        lhs = γ*sqrt(tmp'*(σ2.*tmp))
+        rhs = ρ*sqrt((y-wb)'*T*(y-wb))
+        tmp = wbinv(T/γ, Cwwf[:vectors], diagm(convert(R,1.0)./Cwwf[:values]), y-wb)
+        lhs = γ*sqrt(tmp'*tmp/T.λ)
+        println(lhs, " ", rhs)
         if lhs < rhs
-            γc = γ
             γ *= 2
         else
             break
         end
     end
+    γ
 end
-
-
 
 function eki_lowmem(y::Array{R,1}, 
                     σ::R, 
@@ -44,9 +44,6 @@ function eki_lowmem(y::Array{R,1},
     #Initialization
     Γ = σ^2 * I #this should use the efficient uniform scaling operator - can use both left & right division also
     T = σ^(-2) * I # Precision Matrix 
-    udim = length(prior())
-    ydim = length(y)
-    Cuw = zeros(R,udim, ydim)
     uj = [prior() for j = 1:J]
     yj = [y for j = 1:J]
     #Main Optimization loop
@@ -54,6 +51,9 @@ function eki_lowmem(y::Array{R,1},
         println("Starting up to $N iterations with $J ensemble members")
     end
     for i = 1:N
+        if verbosity > 0
+            println("Iteration # $i. Starting Forward Map")
+        end
         #Prediction
         if parallel
             wj = pmap(gmap, uj)
@@ -70,18 +70,19 @@ function eki_lowmem(y::Array{R,1},
             return mean(uj)
         end
         #Analysis
-        Cuw[:] = cov(hcat(uj...)', hcat(wj...)')
-        Cww = CovarianceOperator(hcat(wj...)')
-        Cwwf = pheigfact(Cww) #this is a low-rank approx to Cww
-        γ = γ0
+        Cuw = CrossCovarianceOperator(hcat(uj...)', hcat(wj...)')
+        Cwwf = pheigfact(CovarianceOperator(hcat(wj...)')) #this is a low-rank approx to Cww
         #set regularization
-        setγ_lowmem!(γ, T, Cwwf, y, wb)
+        γ = setγ_lowmem(γ0, ρ, T, Cwwf, y, wb)
         if verbosity > 0
             println("Iteration # $i. γ = $γ") 
         end
         for j = 1:J
-            yj[j] = y.+σ.*randn(R, ydim)
-            uj[j] = uj[j].+cuw*(Cwwfpγ\(yj[j]-wj[j]))
+            yj[j] = y.+σ.*randn(R, length(y))
+            uj[j] = uj[j].+Cuw*(wbinv(T/γ, 
+                                      Cwwf[:vectors], 
+                                      diagm(convert(R,1.0)./Cwwf[:values]), 
+                                      (yj[j]-wj[j])))
         end
     end
     mean(uj)
