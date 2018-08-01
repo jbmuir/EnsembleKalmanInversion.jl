@@ -5,23 +5,28 @@ function wbinv(Ai::UniformScaling{R}, B, Ci, x) where {R<:Real}
     #woodbury inverse for A given by uniformscaling Ai = A inverse
     # Ci = C inverse
     # B = U, V (in our case UCV = B'CB is symmetric)
-    Ai*x - Ai*B*(Ci+B'*Ai*B)*B'*Ai*x
+    Ai*x - (Ai*B)*(((Ci+B'*Ai*B)\B')*Ai)*x
 end
 
-
+#Neet some way to make γ lower if regularization is too high...
+#FIX THIS FIRST!!!!!!!
 function setγ_lowmem(γ::R, 
                      ρ::R,
                      T::UniformScaling{R}, 
                      Cwwf::PartialHermitianEigen{R,R}, 
                      y::Array{R,1}, 
                      wb::Array{R,1}) where {R<:Real}
+    backtrack_count = 0
     while true
         rhs = ρ*sqrt((y-wb)'*T*(y-wb))
         tmp = wbinv(T/γ, Cwwf[:vectors], diagm(convert(R,1.0)./Cwwf[:values]), y-wb)
         lhs = γ*sqrt(tmp'*tmp/T.λ)
-        println(lhs, " ", rhs)
-        if lhs < rhs
+        if (lhs < rhs) && (backtrack_count >= 0)
             γ *= 2
+            backtrack_count = 1
+        elseif (lhs > rhs) && (-5 <= backtrack_count <= 0)
+            γ /= 2
+            backtrack_count += -1
         else
             break
         end
