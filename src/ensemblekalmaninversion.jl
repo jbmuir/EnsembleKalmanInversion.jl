@@ -5,12 +5,15 @@ function setγ(γ::R, ρ::R, y::Array{R,1}, wb::Array{R,1}, cww::Array{R,2}, Γ:
         lhs = γ*sqrt(tmp'*(Γ*tmp))
         if lhs < rhs
             γ *= 2
+        elseif lhs > 2*rhs
+            γ /= 2
         else
             break
         end
     end
     γ
 end
+
 
 function eki(y::Array{R,1}, 
              σ::R, 
@@ -21,26 +24,31 @@ function eki(y::Array{R,1},
              gmap::Function; 
              ρ::R = convert(R,0.5), 
              ζ::R = convert(R,0.5), 
-             γ0::R = convert(R,0.5), 
+             γ0::R = convert(R,1e0), 
              parallel::Bool = false, 
-             verbosity=0) where R<:Real
-    ydim = length(y)
-    Γ = σ^2.*eye(R,ydim)
-    eki(y, Γ, η, J, N, prior, gmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity)
+             verbosity=0, 
+             lowmem=false) where R<:Real
+    if lowmem
+        eki_lowmem(y, σ, η, J, N, prior, gmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity)
+    else
+        ydim = length(y)
+        Γ = σ^2.*eye(R,ydim)
+        eki(y, Γ, η, J, N, prior, gmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity)
+    end
 end
 
 function eki(y::Array{R,1}, 
-                Γ::Array{R,2}, 
-                η::R,
-                J::Integer, 
-                N::Integer, 
-                prior::Function, 
-                gmap::Function; 
-                ρ::R = convert(R,0.5), 
-                ζ::R = convert(R,0.5), 
-                γ0::R = convert(R,1.0), 
-                parallel::Bool = false,
-                verbosity=0) where {R<:Real}
+             Γ::Array{R,2}, 
+             η::R,
+             J::Integer, 
+             N::Integer, 
+             prior::Function, 
+             gmap::Function; 
+             ρ::R = convert(R,0.5), 
+             ζ::R = convert(R,0.5), 
+             γ0::R = convert(R,1.0), 
+             parallel::Bool = false,
+             verbosity=0) where {R<:Real}
     #Initialization
     H = MvNormal(Γ)
     udim = length(prior())
@@ -54,6 +62,9 @@ function eki(y::Array{R,1},
         println("Starting up to $N iterations with $J ensemble members")
     end
     for i = 1:N
+        if verbosity > 0
+            println("Iteration # $i. Starting Forward Map")
+        end
         #Prediction
         if parallel
             wj = pmap(gmap, uj)
