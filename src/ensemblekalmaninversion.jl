@@ -45,7 +45,7 @@ function eki(y::Array{R,1},
              prior::Function, 
              gmap::Function; 
              ρ::R = convert(R,0.5), 
-             ζ::R = convert(R,0.5), 
+             ζ::R = convert(R,2.0), 
              γ0::R = convert(R,1.0), 
              parallel::Bool = false,
              verbosity=0) where {R<:Real}
