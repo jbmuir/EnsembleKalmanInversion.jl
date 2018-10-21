@@ -57,7 +57,7 @@ using Base.Test
         gmap(q) = G*q 
         J = 100
         N = 100
-        xe = eki(yt, σ, η, J, N, prior, gmap; verbosity=1, lowmem=true, γ0=1e-9) 
-        @test sqrt((yt-G*xe)'*((y-G*xe))/σ^2) <= η 
+        xe = eki(yt, σ, η, J, N, prior, gmap; verbosity=1, lowmem=true,ρ=0.5,ζ=2.0) 
+        @test sqrt((yt-G*xe)'*((y-G*xe))/σ^2) <= 2.0*η 
     end    end
 end
