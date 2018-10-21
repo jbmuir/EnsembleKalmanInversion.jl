@@ -5,8 +5,6 @@ function setγ(γ::R, ρ::R, y::Array{R,1}, wb::Array{R,1}, cww::Array{R,2}, Γ:
         lhs = γ*sqrt(tmp'*(Γ*tmp))
         if lhs < rhs
             γ *= 2
-        elseif lhs > 2*rhs
-            γ /= 2
         else
             break
         end
@@ -23,7 +21,7 @@ function eki(y::Array{R,1},
              prior::Function, 
              gmap::Function; 
              ρ::R = convert(R,0.5), 
-             ζ::R = convert(R,0.5), 
+             ζ::R = convert(R,2.0), 
              γ0::R = convert(R,1e0), 
              parallel::Bool = false, 
              verbosity=0, 

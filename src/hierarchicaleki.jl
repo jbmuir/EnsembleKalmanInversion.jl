@@ -8,7 +8,7 @@ function heki(y::Array{R,1},
               gmap::Function,
               tmap::Function; 
               ρ::R = convert(R,0.5), 
-              ζ::R = convert(R,0.5), 
+              ζ::R = convert(R,2.0), 
               γ0::R = convert(R,1.0), 
               parallel::Bool = false,
               verbosity=0) where {R<:Real}
@@ -69,3 +69,5 @@ function heki(y::Array{R,1},
     end
     (mean(uj), mean(τj), mean(θj))
 end
+
+
