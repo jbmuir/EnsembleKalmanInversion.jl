@@ -2,7 +2,13 @@
  
 #Start Test Script
 using EKI
-using Base.Test
+if VERSION < v"0.7"
+    using Base.Test
+else
+    using Test
+    using Random
+    using Statistics
+end
  
 # Run tests
  
