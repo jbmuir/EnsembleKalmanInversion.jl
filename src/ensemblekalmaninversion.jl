@@ -54,7 +54,11 @@ function setγ(γ::R,
     wb::Array{R,1}) where {R<:Real}
     while true
         rhs = ρ*sqrt((y-wb)'*T*(y-wb))
-        tmp = wbinv(T/γ, Cwwf[:vectors], diagm(convert(R,1.0)./Cwwf[:values]), y-wb)
+        if VERSION < v"0.7"
+            tmp = wbinv(T/γ, Cwwf[:vectors], diagm(convert(R,1.0)./Cwwf[:values]), y-wb)
+        else
+            tmp = wbinv(T/γ, Cwwf[:vectors], Diagonal(convert(R,1.0)./Cwwf[:values]), y-wb)
+        end
         lhs = γ*sqrt(tmp'*tmp/T.λ)
         if lhs < rhs
             γ *= 2
@@ -84,10 +88,17 @@ function ensemble_update!(u::Array{Array{R,1},1},
         end
         for j = 1:size(u)[1]
             yj = y.+σ.*randn(R, length(y))
-            u[j] = u[j].+Cuw*(wbinv(T/γ, 
-                                    Cwwf[:vectors], 
-                                    diagm(convert(R,1.0)./Cwwf[:values]), 
-                                    (yj-w[j])))
+            if VERSION < v"0.7"
+                u[j] = u[j].+Cuw*(wbinv(T/γ, 
+                                        Cwwf[:vectors], 
+                                        diagm(convert(R,1.0)./Cwwf[:values]), 
+                                        (yj-w[j])))
+            else
+                u[j] = u[j].+Cuw*(wbinv(T/γ, 
+                Cwwf[:vectors], 
+                Diagonal(convert(R,1.0)./Cwwf[:values]), 
+                (yj-w[j])))
+            end
         end
 end
 

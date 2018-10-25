@@ -15,17 +15,28 @@ end
 function CovarianceOperator(X)
     T = eltype(X)
     n, p = size(X)
-    Xm = mean(X,1)
+    if VERSION < v"0.7"
+        Xm = mean(X,1)
+    else
+        Xm = mean(X, dims=1)
+    end
     ml! = (y, _, x) -> covmul!(y, X.-Xm, n, x)
     CovarianceOperator{T}(p, ml!, nothing)
 end
 
 Base.convert(::Type{LinearOperator}, A::CovarianceOperator) = convert(LinearOperator{eltype(A)}, A)
 Base.convert(::Type{LinearOperator{T}}, A::CovarianceOperator{T}) where T = LinearOperator{T}(A.p, A.p, A.mul!, A.mul!, A._tmp)
-@compat adjoint(A::CovarianceOperator) = A
 Base.transpose(A::CovarianceOperator) = A
-Base.ishermitian(A::CovarianceOperator) = true
-Base.issymmetric(A::CovarianceOperator) = isreal(A)
+if VERSION <= v"0.7"
+    @compat adjoint(A::CovarianceOperator) = A
+    Base.ishermitian(A::CovarianceOperator) = true
+    Base.issymmetric(A::CovarianceOperator) = isreal(A)
+else
+    LinearAlgebra.adjoint(A::CovarianceOperator) = A
+    LinearAlgebra.ishermitian(A::CovarianceOperator) = true
+    LinearAlgebra.issymmetric(A::CovarianceOperator) = isreal(A)
+end
+
 Base.size(A::CovarianceOperator) = (A.p, A.p)
 Base.size(A::CovarianceOperator, dim::Integer) = (dim == 1 || dim == 2) ? A.p : 1
 
@@ -51,8 +62,13 @@ function CrossCovarianceOperator(X, Y)
     nx, p = size(X)
     ny, q = size(Y)
     @assert nx == ny
-    Xm = mean(X,1)
-    Ym = mean(Y,1)
+    if VERSION < v"0.7"
+        Xm = mean(X,1)
+        Ym = mean(Y,1)
+    else
+        Xm = mean(X,dims=1)
+        Ym = mean(Y,dims=1)
+    end
     ml! = (y, _, x) -> crosscovmul!(y, X.-Xm, Y.-Ym, nx, x)
     mulc! = (y, _, x) -> crosscovmul!(y, Y.-Ym, X.-Xm, nx, x)
     CrossCovarianceOperator{Tx}(p, q, ml!, mulc!, nothing)
@@ -60,10 +76,17 @@ end
 
 Base.convert(::Type{LinearOperator}, A::CrossCovarianceOperator) = convert(LinearOperator{eltype(A)}, A)
 Base.convert(::Type{LinearOperator{T}}, A::CrossCovarianceOperator{T}) where T = LinearOperator{T}(A.p, A.q, A.mul!, A.mulc!, A._tmp)
-@compat adjoint(A::CrossCovarianceOperator{T}) where {T} = CrossCovarianceOperator{T}(A.q, A.p, A.mulc!, A.mul!, nothing)
 Base.transpose(A::CrossCovarianceOperator{T}) where {T} = CrossCovarianceOperator{T}(A.q, A.p, A.mulc!, A.mul!, nothing)
-Base.ishermitian(A::CrossCovarianceOperator) = false
-Base.issymmetric(A::CrossCovarianceOperator) = false
+if VERSION <= v"0.7"
+    @compat adjoint(A::CrossCovarianceOperator{T}) where {T} = CrossCovarianceOperator{T}(A.q, A.p, A.mulc!, A.mul!, nothing)
+    Base.ishermitian(A::CrossCovarianceOperator) = false
+    Base.issymmetric(A::CrossCovarianceOperator) = false
+else
+    LinearAlgebra.adjoint(A::CrossCovarianceOperator{T}) where {T} = CrossCovarianceOperator{T}(A.q, A.p, A.mulc!, A.mul!, nothing)
+    LinearAlgebra.ishermitian(A::CrossCovarianceOperator) = false
+    LinearAlgebra.issymmetric(A::CrossCovarianceOperator) = false
+end
+
 Base.size(A::CrossCovarianceOperator) = (A.p, A.q)
 
 

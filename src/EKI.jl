@@ -1,12 +1,19 @@
 module EKI
 
 using LowRankApprox: AbstractLinearOperator, LinearOperator, pheigfact, PartialHermitianEigen
-import Base: convert, size, transpose, ishermitian, issymmetric
+import Base: convert, size, transpose
 using Compat
-if VERSION >= v"0.7"
+
+if VERSION < v"0.7"
+    import Base: ishermitian, issymmetric
+else
     using Random: randperm
     using Nullables
+    import LinearAlgebra
+    using LinearAlgebra: UniformScaling, I, Diagonal
+    using Statistics: mean
 end
+
 export eki
 export heki
 
