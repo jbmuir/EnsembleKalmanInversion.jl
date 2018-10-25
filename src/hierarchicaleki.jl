@@ -1,3 +1,60 @@
+function heki(y::Array{Array{R,1},1}, 
+             σ::R, 
+             η::R,
+             J::Integer, 
+             N::Integer, 
+             prior::Function, 
+             gmap::Function,
+             tmap::Function; 
+             ρ::R = convert(R,0.5), 
+             ζ::R = convert(R,2.0), 
+             γ0::R = convert(R,1e0), 
+             batched::Bool = false,
+             batches::Int = 1,
+             batch_off::Int = 20,
+             parallel::Bool = false,
+             verbosity::Int=0,
+             rerandomize::Bool = false,
+             rerandom_coeff::R = convert(R,0.25)) where R<:Real
+    if batched
+        heki_batched(y, σ, η, J, N, prior, gmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity, rerandomize=rerandomize, rerandom_coeff=rerandom_coeff, batches=batches, batch_off=batch_off)
+    else
+        @assert length(y) == 1 "y must have only one element in non-batched form"
+        heki_nobatch(y[1], σ, η, J, N, prior, gmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity, rerandomize=rerandomize, rerandom_coeff=rerandom_coeff)
+    end
+end
+
+
+function heki_ensemble_update!(u::Array{Array{R,1},1}, 
+                               w::Array{Array{R,1},1}, 
+                               wm::Array{R,1}, 
+                               y::Array{R,1}, 
+                               γ0::R,
+                               σ::R, 
+                               ρ::R, 
+                               T::UniformScaling{R},
+                               verbosity::Int=0) where R<:Real
+        #Analysis
+        Cuw = CrossCovarianceOperator(hcat(u...)', hcat(w...)')
+        Cwwf = pheigfact(CovarianceOperator(hcat(w...)')) #this is a low-rank approx to Cww
+        #set regularization
+        γ = setγ(γ0, ρ, T, Cwwf, y, wm)
+        if verbosity >= 2
+            println("γ = $γ") 
+        end
+        for j = 1:size(u)[1]
+            yj = y.+σ.*randn(R, length(y))
+            u[j] = u[j].+Cuw*(wbinv(T/γ, 
+                                    Cwwf[:vectors], 
+                                    diagm(convert(R,1.0)./Cwwf[:values]), 
+                                    (yj-w[j])))
+        end
+end
+
+
+
+
+
 function heki(y::Array{R,1}, 
               Γ::Array{R,2}, 
               η::R,
