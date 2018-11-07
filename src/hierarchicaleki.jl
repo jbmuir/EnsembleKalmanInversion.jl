@@ -37,7 +37,7 @@ function heki_ensemble_update!(τ::Array{Array{R,1},1},
                                verbosity::Int=0) where R<:Real
         #Analysis
         Cτw = CrossCovarianceOperator(hcat(τ...)', hcat(w...)')
-        Cθw = CrossCovarianceOpterator(hcat(θ...)', hcat(w...)')
+        Cθw = CrossCovarianceOperator(hcat(θ...)', hcat(w...)')
         Cwwf = pheigfact(CovarianceOperator(hcat(w...)')) #this is a low-rank approx to Cww
         #set regularization
         γ = setγ(γ0, ρ, T, Cwwf, y, wm)
@@ -120,11 +120,11 @@ function heki_nobatch(y::Array{R,1},
             println("Iteration # $i. Discrepancy Check; Weighted Norm: $convg, Noise level: $(ζ*η)") 
         end
         if convg <= ζ*η
-            return (mean(u), mean(τ), mean(θ))
+            return (mean(τ), mean(θ))
         end
         heki_ensemble_update!(τ,θ,w,wm,y,γ0,σ,ρ,T,verbosity)
     end
-    (mean(u), mean(τ), mean(θ))
+    (mean(τ), mean(θ))
 end
 
 
@@ -133,8 +133,10 @@ function heki_batched(y::Array{Array{R,1},1},
                     η::R,
                     J::Integer, 
                     N::Integer, 
-                    prior::Function, 
-                    gmap::Function; 
+                    priorτ::Function, 
+                    priorθ::Function,
+                    gmap::Function,
+                    tmap::Function; 
                     ρ::R = convert(R,0.5), 
                     ζ::R = convert(R,2.0), 
                     γ0::R = convert(R,1.0), 
@@ -178,7 +180,7 @@ function heki_batched(y::Array{Array{R,1},1},
             println("Iteration # $i. Discrepancy Check; Weighted Norm: $convg, Noise level: $(ζ*η)") 
         end
         if convg <= ζ*η
-            return (mean(u), mean(τ), mean(θ))
+            return (mean(τ), mean(θ))
         end
         #set up batch ordering
         if i < batch_off
@@ -196,7 +198,7 @@ function heki_batched(y::Array{Array{R,1},1},
             ensemble_update!(τ,θ,w,wm,vcat(y[p]...),γ0,σ,ρ,T,verbosity)
         end
     end
-    (mean(u), mean(τ), mean(θ))
+    (mean(τ), mean(θ))
 end
 
 
