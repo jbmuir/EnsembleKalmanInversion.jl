@@ -119,7 +119,12 @@ function eki_nobatch(y::Array{R,1},
     #Initialization
     Γ = σ^2 * I #this should use the efficient uniform scaling operator - can use both left & right division also
     T = σ^(-2) * I # Precision Matrix 
-    u = [prior() for j = 1:J]
+    if parallel
+        u = pmap(x->prior(), 1:J)
+    else
+        u = map(x->prior(), 1:J)
+    end
+    # u = [prior() for j = 1:J]
     #Main Optimization loop
     if verbosity > 0
         println("Starting up to $N iterations with $J ensemble members")
@@ -168,7 +173,12 @@ function eki_batched(y::Array{Array{R,1},1},
     #Initialization
     Γ = σ^2 * I #this should use the efficient uniform scaling operator - can use both left & right division also
     T = σ^(-2) * I # Precision Matrix 
-    u = [prior() for j = 1:J]
+    if parallel
+        u = pmap(x->prior(), 1:J)
+    else
+        u = map(x->prior(), 1:J)
+    end
+    #u = [prior() for j = 1:J]
     ya = vcat(y...)
     #Main Optimization loop
     if verbosity > 0
