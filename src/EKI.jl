@@ -12,6 +12,7 @@ else
     import LinearAlgebra
     using LinearAlgebra: UniformScaling, I, Diagonal
     using Statistics: mean
+    using Distributed: addprocs, pmap
 end
 
 export eki
