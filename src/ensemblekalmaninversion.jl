@@ -1,6 +1,3 @@
-#TODO: can we improve this further using low-rank approximations of cww?
-#      rank of cww is at most J?
-
 function eki(y::Array{Array{R,1},1}, 
              σ::R, 
              η::R,
