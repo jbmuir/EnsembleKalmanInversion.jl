@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
  
 #Start Test Script
-using EKI
+using EnsembleKalmanInversion
 if VERSION < v"0.7"
     using Base.Test
 else
@@ -12,15 +12,15 @@ end
  
 # Run tests
  
-@testset "EKI Tests" begin
+@testset "EnsembleKalmanInversion Tests" begin
     @testset "CovarianceOperator Tests" begin
         x = randn(500)
         X = randn(20,500)
         C = cov(X,X)
-        A = EKI.CovarianceOperator(X)
+        A = EnsembleKalmanInversion.CovarianceOperator(X)
         y = C*x
         Y = randn(20,300)
-        A2 = EKI.CrossCovarianceOperator(X,Y)
+        A2 = EnsembleKalmanInversion.CrossCovarianceOperator(X,Y)
         C2 = cov(X,Y)
         x2 = randn(300)
         y2 = C2*x2
@@ -33,7 +33,7 @@ end
         @test isapprox(y1p5, A2'*x)
         @test_broken isapprox(x'*B*x2, x2'*B'*x)
     end
-    @testset "EKI Tests" begin
+    @testset "EnsembleKalmanInversion Tests" begin
         @testset "Linear Test" begin
         #This should certainly be a set of "convergence" tests
             G = randn(50,100)
@@ -46,7 +46,7 @@ end
             gmap(q) = G*q 
             J = 100
             N = 100
-            xe = eki([yt], σ, η, J, N, prior, gmap; verbosity=1,ρ=0.5,ζ=2.0) 
+            xe = EnsembleKalmanInversion([yt], σ, η, J, N, prior, gmap; verbosity=1,ρ=0.5,ζ=2.0) 
             @test sqrt((yt-G*xe)'*((y-G*xe))/σ^2) <= 2.0*η 
         end    
         @testset "Linear Batched Test" begin
@@ -75,7 +75,7 @@ end
             end
             J = 100
             N = 100
-            xe = eki(yt, σ, η, J, N, prior, gmap; verbosity=1,ρ=0.5,ζ=2.0, batched=true, batches=3, batch_off=20) 
+            xe = EnsembleKalmanInversion(yt, σ, η, J, N, prior, gmap; verbosity=1,ρ=0.5,ζ=2.0, batched=true, batches=3, batch_off=20) 
             ye = [G1*xe,G2*xe,G3*xe,G4*xe]
             @test sqrt((vcat(yt...)-vcat(ye...))'*((vcat(y...)-vcat(ye...)))/σ^2) <= 2.0*η 
         end    
