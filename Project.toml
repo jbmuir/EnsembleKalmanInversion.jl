@@ -1,7 +1,7 @@
-name = "EKI"
+name = "EnsembleKalmanInversion"
 uuid = "8fe63082-9b24-11e8-1eea-33ebdfc29f90"
 authors = ["Jack Muir <jmuir@caltech.edu>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
