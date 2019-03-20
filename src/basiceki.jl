@@ -1,4 +1,4 @@
-function eki(y::Array{Array{R,1},1}, 
+function eki(y::Union{Array{R,1}, Array{Array{R,1},1}},
              σ::R, 
              η::R,
              J::Integer, 
@@ -8,71 +8,22 @@ function eki(y::Array{Array{R,1},1},
              ρ::R = convert(R,0.5), 
              ζ::R = convert(R,2.0), 
              γ0::R = convert(R,1e0), 
-             batched::Bool = false,
-             batches::Int = 1,
-             batch_off::Int = 20,
              parallel::Bool = false,
              verbosity::Int=0,
              rerandomize::Bool = false,
-             rerandom_coeff::R = convert(R,0.25)) where R<:Real
+             rerandom_fun::Function = prior,
+             rerandom_coeff::R = convert(R,0.25), 
+             batched::Bool = false,
+             batches::Int = 1) where R<:Real
     if batched
-        eki_batched(y, σ, η, J, N, prior, gmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity, rerandomize=rerandomize, rerandom_coeff=rerandom_coeff, batches=batches, batch_off=batch_off)
+        @assert typeof(y) == Array{Array{R,1}, 1} "Must supply a list of data subsets for batched EKI, current type is $(typeof(y))"
+        eki_batched(y, σ, η, J, N, prior, gmap, ρ, ζ, γ0, parallel, verbosity, rerandomize, rerandom_fun, rerandom_coeff, batches)
     else
-        @assert length(y) == 1 "y must have only one element in non-batched form"
-        eki_nobatch(y[1], σ, η, J, N, prior, gmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity, rerandomize=rerandomize, rerandom_coeff=rerandom_coeff)
+        @assert typeof(y) == Array{R,1} "Must supply array of flat data for unbatched EKI, current type is $(typeof(y))"
+        eki_nobatch(y, σ, η, J, N, prior, gmap, ρ, ζ, γ0, parallel, verbosity, rerandomize, rerandom_fun, rerandom_coeff)
     end
 end
 
-function wbinv(Ai::UniformScaling{R}, B::Array{R,2}, Ci::Diagonal{R,Array{R,1}}, x::Array{R,1}) where {R<:Real}
-    #woodbury inverse for A given by uniformscaling Ai = A inverse
-    # Ci = C inverse
-    # B = U, V (in our case UCV = B'CB is symmetric)
-    Ai*x - (Ai*B)*(((Ci+B'*Ai*B)\B')*(Ai*x))
-end
-
-function wbinv(Ai::UniformScaling{R}, B, Ci, x) where {R<:Real}
-    #woodbury inverse for A given by uniformscaling Ai = A inverse
-    # Ci = C inverse
-    # B = U, V (in our case UCV = B'CB is symmetric)
-    Ai*x - (Ai*B)*(((Ci+B'*Ai*B)\B')*(Ai*x))
-end
-
-
-function kfoldperm(N,k)
-    #function from Dan Getz  https://stackoverflow.com/questions/37989159/how-to-divide-my-data-into-distincts-mini-batches-randomly-julia
-    #because my brain was shutoff on a monday afternoon
-    n,r = divrem(N,k)
-    b = collect(1:n:N+1)
-    for i in 1:length(b)
-        b[i] += i > r ? r : i-1  
-    end
-    p = randperm(N)
-    return [p[r] for r in [b[i]:b[i+1]-1 for i=1:k]]
-end
-
-
-function setγ(γ::R, 
-    ρ::R,
-    T::UniformScaling{R}, 
-    Cwwf::PartialHermitianEigen{R,R}, 
-    y::Array{R,1}, 
-    wb::Array{R,1}) where {R<:Real}
-    while true
-        rhs = ρ*sqrt((y-wb)'*T*(y-wb))
-        if VERSION < v"0.7"
-            tmp = wbinv(T/γ, Cwwf[:vectors], diagm(convert(R,1.0)./Cwwf[:values]), y-wb)
-        else
-            tmp = wbinv(T/γ, Cwwf[:vectors], Diagonal(convert(R,1.0)./Cwwf[:values]), y-wb)
-        end
-        lhs = γ*sqrt(tmp'*tmp/T.λ)
-        if lhs < rhs
-            γ *= 2
-        else
-            break
-        end
-    end
-    γ
-end
 
 function ensemble_update!(u::Array{Array{R,1},1}, 
                           w::Array{Array{R,1},1}, 
@@ -82,7 +33,7 @@ function ensemble_update!(u::Array{Array{R,1},1},
                           σ::R, 
                           ρ::R, 
                           T::UniformScaling{R},
-                          verbosity::Int=0) where R<:Real
+                          verbosity::Int) where R<:Real
         #Analysis
         Cuw = CrossCovarianceOperator(hcat(u...)', hcat(w...)')
         Cwwf = pheigfact(CovarianceOperator(hcat(w...)')) #this is a low-rank approx to Cww
@@ -113,14 +64,15 @@ function eki_nobatch(y::Array{R,1},
                     J::Integer, 
                     N::Integer, 
                     prior::Function, 
-                    gmap::Function; 
-                    ρ::R = convert(R,0.5), 
-                    ζ::R = convert(R,2.0), 
-                    γ0::R = convert(R,1.0), 
-                    parallel::Bool = false,
-                    verbosity::Int=0,
-                    rerandomize::Bool = false,
-                    rerandom_coeff::R = convert(R,0.25)) where {R<:Real}
+                    gmap::Function, 
+                    ρ::R, 
+                    ζ::R, 
+                    γ0::R, 
+                    parallel::Bool,
+                    verbosity::Int,
+                    rerandomize::Bool,
+                    rerandom_fun::Function,
+                    rerandom_coeff::R) where {R<:Real}
     #Initialization
     Γ = σ^2 * I #this should use the efficient uniform scaling operator - can use both left & right division also
     T = σ^(-2) * I # Precision Matrix 
@@ -144,9 +96,11 @@ function eki_nobatch(y::Array{R,1},
         else
             w = map(gmap, u)
         end
+        #Gum = gmap(mean(u))
         wm = mean(w)
         #Discrepancy principle
         convg = sqrt((y-wm)'*T*(y-wm))
+        #convg = sqrt((y-Gum)'*T*(y-Gum))
         if verbosity > 0
             println("Iteration # $i. Discrepancy Check; Weighted Norm: $convg, Noise level: $(ζ*η)") 
         end
@@ -165,16 +119,16 @@ function eki_batched(y::Array{Array{R,1},1},
                     J::Integer, 
                     N::Integer, 
                     prior::Function, 
-                    gmap::Function; 
-                    ρ::R = convert(R,0.5), 
-                    ζ::R = convert(R,2.0), 
-                    γ0::R = convert(R,1.0), 
-                    parallel::Bool = false,
-                    verbosity::Int=0,
-                    rerandomize::Bool = false,
-                    rerandom_coeff::R = convert(R,0.25),
-                    batches::Int=1,
-                    batch_off::Int=20) where {R<:Real}
+                    gmap::Function, 
+                    ρ::R, 
+                    ζ::R, 
+                    γ0::R, 
+                    parallel::Bool,
+                    verbosity::Int,
+                    rerandomize::Bool,
+                    rerandom_fun::Function,
+                    rerandom_coeff::R,
+                    batches::Int) where {R<:Real}
     #Initialization
     Γ = σ^2 * I #this should use the efficient uniform scaling operator - can use both left & right division also
     T = σ^(-2) * I # Precision Matrix 
@@ -209,11 +163,7 @@ function eki_batched(y::Array{Array{R,1},1},
             return mean(u)
         end
         #set up batch ordering
-        if i < batch_off
-            parts = kfoldperm(length(y), batches) #randomize batch groupings each iterations
-        else
-            parts = kfoldperm(length(y), 1) #turn off minibatching after you have approached the minimum
-        end
+        parts = kfoldperm(length(y), batches) #randomize batch groupings each iterations
         for (i, p) in enumerate(parts)
             if parallel
                 w = pmap(x->vcat([gmap(x,b) for b in p]...), u)
