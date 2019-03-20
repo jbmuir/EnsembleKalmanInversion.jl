@@ -4,13 +4,9 @@ module EnsembleKalmanInversionTests
 
     #Start Test Script
     using EnsembleKalmanInversion
-    if VERSION < v"0.7"
-        using Base.Test
-    else
-        using Test
-        using Random
-        using Statistics
-    end
+    using Test
+    using Random
+    using Statistics
     
     # Run tests
     
@@ -49,8 +45,8 @@ module EnsembleKalmanInversionTests
                 gmap(q) = G*q 
                 J = 100
                 N = 100
-                xe = eki([yt], σ, η, J, N, prior, gmap; verbosity=1,ρ=0.5,ζ=2.0) 
-                @test sqrt((yt-G*xe)'*((y-G*xe))/σ^2) <= 2.0*η 
+                xe = eki(y, σ, η, J, N, prior, gmap; verbosity=1, ρ=0.5, ζ=2.0) 
+                @test sqrt((yt-G*xe)'*((yt-G*xe))/σ^2) <= 2.0*η 
             end    
 
             @testset "Linear Batched Test" begin
@@ -79,7 +75,7 @@ module EnsembleKalmanInversionTests
                 end
                 J = 100
                 N = 100
-                xe = eki(yt, σ, η, J, N, prior, gmap; verbosity=1,ρ=0.5,ζ=2.0, batched=true, batches=3, batch_off=20) 
+                xe = eki(y, σ, η, J, N, prior, gmap; verbosity=1, ρ=0.5, ζ=2.0, batched=true, batches=3) 
                 ye = [G1*xe,G2*xe,G3*xe,G4*xe]
                 @test sqrt((vcat(yt...)-vcat(ye...))'*((vcat(y...)-vcat(ye...)))/σ^2) <= 2.0*η 
             end    
