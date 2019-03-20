@@ -100,12 +100,19 @@ function eki_nobatch(y::Array{R,1},
         wm = mean(w)
         #Discrepancy principle
         convg = sqrt((y-wm)'*T*(y-wm))
-        #convg = sqrt((y-Gum)'*T*(y-Gum))
         if verbosity > 0
             println("Iteration # $i. Discrepancy Check; Weighted Norm: $convg, Noise level: $(ζ*η)") 
         end
         if convg <= ζ*η
             return mean(u)
+        end
+        if rerandomize
+            um = mean(u)
+            if parallel
+                u = pmap(x-> um .+ rerandom_coeff .* rerandom_fun(), 1:J)
+            else
+                u = map(x-> um .+ rerandom_coeff .* rerandom_fun(), 1:J)
+            end
         end
         ensemble_update!(u,w,wm,y,γ0,σ,ρ,T,verbosity)
     end
@@ -161,6 +168,14 @@ function eki_batched(y::Array{Array{R,1},1},
         end
         if convg <= ζ*η
             return mean(u)
+        end
+        if rerandomize
+            um = mean(u)
+            if parallel
+                u = pmap(x-> um .+ rerandom_coeff .* rerandom_fun(), 1:J)
+            else
+                u = map(x-> um .+ rerandom_coeff .* rerandom_fun(), 1:J)
+            end
         end
         #set up batch ordering
         parts = kfoldperm(length(y), batches) #randomize batch groupings each iterations
