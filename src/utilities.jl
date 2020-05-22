@@ -34,11 +34,7 @@ function setγ(γ::R,
     wb::Array{R,1}) where {R<:Real}
     while true
         rhs = ρ*sqrt((y-wb)'*T*(y-wb))
-        if VERSION < v"0.7"
-            tmp = wbinv(T/γ, Cwwf[:vectors], diagm(convert(R,1.0)./Cwwf[:values]), y-wb)
-        else
-            tmp = wbinv(T/γ, Cwwf[:vectors], Diagonal(convert(R,1.0)./Cwwf[:values]), y-wb)
-        end
+        tmp = wbinv(T/γ, Cwwf[:vectors], Diagonal(convert(R,1.0)./Cwwf[:values]), y-wb)
         lhs = γ*sqrt(tmp'*tmp/T.λ)
         if lhs < rhs
             γ *= 2
