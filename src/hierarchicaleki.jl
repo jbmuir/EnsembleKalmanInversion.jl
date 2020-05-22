@@ -1,4 +1,4 @@
-function heki(y::Array{Array{R,1},1}, 
+function heki(y::Union{Array{R,1}, Array{Array{R,1},1}}, 
              σ::R, 
              η::R,
              J::Integer, 
@@ -17,16 +17,17 @@ function heki(y::Array{Array{R,1},1},
              rerandomize::Bool = false,
              rerandom_coeff::R = convert(R,0.25)) where R<:Real
     if batched
+        @assert typeof(y) == Array{Array{R,1}, 1} "Must supply a list of data subsets for batched HEKI, current type is $(typeof(y))"
         heki_batched(y, σ, η, J, N, priorτ, priorθ, gmap, tmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity, rerandomize=rerandomize, rerandom_coeff=rerandom_coeff, batches=batches, batch_off=batch_off)
     else
-        @assert length(y) == 1 "y must have only one element in non-batched form"
-        heki_nobatch(y[1], σ, η, J, N, priorτ, priorθ, gmap, tmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity, rerandomize=rerandomize, rerandom_coeff=rerandom_coeff)
+        @assert typeof(y) == Array{R,1} "Must supply array of flat data for unbatched HEKI, current type is $(typeof(y))"
+        heki_nobatch(y, σ, η, J, N, priorτ, priorθ, gmap, tmap; ρ = ρ, ζ = ζ, γ0 = γ0, parallel = parallel, verbosity=verbosity, rerandomize=rerandomize, rerandom_coeff=rerandom_coeff)
     end
 end
 
-function heki_ensemble_update!(τ::Array{Array{R,1},1}, 
-                               θ::Array{Array{R,1},1},
-                               w::Array{Array{R,1},1}, 
+function heki_ensemble_update!(τ::Union{Array{R,1}, Array{Array{R,1},1}}, 
+                               θ::Union{Array{R,1}, Array{Array{R,1},1}},
+                               w::Union{Array{R,1}, Array{Array{R,1},1}}, 
                                wm::Array{R,1}, 
                                y::Array{R,1}, 
                                γ0::R,
@@ -45,25 +46,15 @@ function heki_ensemble_update!(τ::Array{Array{R,1},1},
         end
         for j = 1:size(τ)[1]
             yj = y.+σ.*randn(R, length(y))
-            if VERSION < v"0.7"
-                τ[j] = τ[j].+Cτw*(wbinv(T/γ, 
-                                        Cwwf[:vectors], 
-                                        diagm(convert(R,1.0)./Cwwf[:values]), 
-                                        (yj-w[j])))
-                θ[j] = θ[j].+Cθw*(wbinv(T/γ, 
-                                        Cwwf[:vectors], 
-                                        diagm(convert(R,1.0)./Cwwf[:values]), 
-                                        (yj-w[j])))
-            else
-                τ[j] = τ[j].+Cτw*(wbinv(T/γ, 
-                Cwwf[:vectors], 
-                Diagonal(convert(R,1.0)./Cwwf[:values]), 
-                (yj-w[j])))
-                θ[j] = θ[j].+Cθw*(wbinv(T/γ, 
-                Cwwf[:vectors], 
-                Diagonal(convert(R,1.0)./Cwwf[:values]), 
-                (yj-w[j])))
-            end
+            τ[j] = τ[j].+Cτw*(wbinv(T/γ, 
+            Cwwf[:vectors], 
+            Diagonal(convert(R,1.0)./Cwwf[:values]), 
+            (yj-w[j])))
+
+            θ[j] = θ[j].+Cθw*(wbinv(T/γ, 
+            Cwwf[:vectors], 
+            Diagonal(convert(R,1.0)./Cwwf[:values]), 
+            (yj-w[j])))
         end
 end
 

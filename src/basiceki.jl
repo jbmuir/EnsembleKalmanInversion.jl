@@ -44,17 +44,10 @@ function ensemble_update!(u::Array{Array{R,1},1},
         end
         for j = 1:size(u)[1]
             yj = y.+σ.*randn(R, length(y))
-            if VERSION < v"0.7"
-                u[j] = u[j].+Cuw*(wbinv(T/γ, 
-                                        Cwwf[:vectors], 
-                                        diagm(convert(R,1.0)./Cwwf[:values]), 
-                                        (yj-w[j])))
-            else
-                u[j] = u[j].+Cuw*(wbinv(T/γ, 
-                Cwwf[:vectors], 
-                Diagonal(convert(R,1.0)./Cwwf[:values]), 
-                (yj-w[j])))
-            end
+            u[j] = u[j].+Cuw*(wbinv(T/γ, 
+            Cwwf[:vectors], 
+            Diagonal(convert(R,1.0)./Cwwf[:values]), 
+            (yj-w[j])))
         end
 end
 

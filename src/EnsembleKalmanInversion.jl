@@ -10,12 +10,12 @@ module EnsembleKalmanInversion
     using Distributed:  pmap
 
     export eki
-    #export heki
+    export heki
 
     include("covarianceoperator.jl")
     include("utilities.jl")
     include("basiceki.jl")
-    #include("hierarchicaleki.jl")
+    include("hierarchicaleki.jl")
  
 
 end
