@@ -1,18 +1,3 @@
-function wbinv(Ai::UniformScaling{R}, B::Array{R,2}, Ci::Diagonal{R,Array{R,1}}, x::Array{R,1}) where {R<:Real}
-    #woodbury inverse for A given by uniformscaling Ai = A inverse
-    # Ci = C inverse
-    # B = U, V (in our case UCV = B'CB is symmetric)
-    Ai*x - (Ai*B)*(((Ci+B'*Ai*B)\B')*(Ai*x))
-end
-
-function wbinv(Ai::UniformScaling{R}, B, Ci, x) where {R<:Real}
-    #woodbury inverse for A given by uniformscaling Ai = A inverse
-    # Ci = C inverse
-    # B = U, V (in our case UCV = B'CB is symmetric)
-    Ai*x - (Ai*B)*(((Ci+B'*Ai*B)\B')*(Ai*x))
-end
-
-
 function kfoldperm(N,k)
     #function from Dan Getz  https://stackoverflow.com/questions/37989159/how-to-divide-my-data-into-distincts-mini-batches-randomly-julia
     #because my brain was shutoff on a monday afternoon

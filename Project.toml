@@ -5,6 +5,7 @@ version = "0.2.0"
 
 [deps]
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+EmpiricalCovarianceOperators = "b938a66e-7962-4dd6-8350-1b5da96f6ae1"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LowRankApprox = "898213cb-b102-5a47-900c-97e73b919f73"
 Nullables = "4d1e1d77-625e-5b40-9113-a560ec7a8ecd"
